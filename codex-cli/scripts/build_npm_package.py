@@ -270,6 +270,17 @@ def stage_sources(staging_dir: Path, version: str, package: str) -> None:
         if readme_src.exists():
             shutil.copy2(readme_src, staging_dir / "README.md")
 
+        postinstall_script = staging_dir / "postinstall.sh"
+        postinstall_script.write_text(
+            '#!/bin/sh\n'
+            'set -e\n'
+            'cd "$(dirname "$0")"\n'
+            'find vendor -type f -name "codex*" -o -name "bwrap" -o -name "rg" | '
+            'while read f; do chmod +x "$f" 2>/dev/null || true; done\n',
+            encoding="utf-8",
+        )
+        postinstall_script.chmod(0o755)
+
         with open(CODEX_CLI_ROOT / "package.json", "r", encoding="utf-8") as fh:
             codex_package_json = json.load(fh)
 
@@ -279,7 +290,8 @@ def stage_sources(staging_dir: Path, version: str, package: str) -> None:
             "license": codex_package_json.get("license", "Apache-2.0"),
             "os": [platform_package["os"]],
             "cpu": [platform_package["cpu"]],
-            "files": ["vendor"],
+            "files": ["vendor", "postinstall.sh"],
+            "scripts": {"postinstall": "sh postinstall.sh"},
             "repository": codex_package_json.get("repository"),
         }
 
