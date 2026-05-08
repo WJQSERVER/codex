@@ -315,7 +315,7 @@ mod tests {
             requires_openai_auth: false,
             supports_websockets: true,
             supports_models_endpoint: false,
-            disable_prompt_caching: false,
+            store: false,
         }
     }
 }

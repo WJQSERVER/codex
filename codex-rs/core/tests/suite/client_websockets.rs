@@ -1881,7 +1881,7 @@ fn websocket_provider_with_connect_timeout(
         requires_openai_auth: false,
         supports_websockets: true,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     }
 }
 

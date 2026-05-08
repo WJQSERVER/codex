@@ -49,7 +49,7 @@ message ModelProvider {
   bool requires_openai_auth = 16;
   bool supports_websockets = 17;
   bool supports_models_endpoint = 18;
-  bool disable_prompt_caching = 19;
+  bool store = 19;
 }
 
 message StringMap {

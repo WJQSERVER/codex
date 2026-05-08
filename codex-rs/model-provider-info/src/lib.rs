@@ -135,32 +135,11 @@ pub struct ModelProviderInfo {
     /// `/models` endpoint instead of relying solely on the bundled catalog.
     #[serde(default)]
     pub supports_models_endpoint: bool,
-    /// Opt-out from prompt caching enabled via `supports_models_endpoint`.
-    /// When `supports_models_endpoint` is true, prompt caching is implicitly
-    /// enabled. Set this to true to disable caching while keeping the remote
-    /// `/models` endpoint active.
+    /// Pass `store: true` in Responses API requests to persist responses
+    /// server-side, enabling `previous_response_id` for incremental context
+    /// reuse (prompt caching). Defaults to false.
     #[serde(default)]
-    pub disable_prompt_caching: bool,
-}
-
-impl ModelProviderInfo {
-    /// Returns true when prompt caching should be enabled for this provider.
-    ///
-    /// Prompt caching is implicitly enabled when `supports_models_endpoint` is
-    /// set, and can be explicitly disabled via `disable_prompt_caching`.
-    pub fn supports_prompt_caching(&self) -> bool {
-        self.supports_models_endpoint && !self.disable_prompt_caching
-    }
-}
-
-/// AWS SigV4 auth configuration for a model provider.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, JsonSchema)]
-#[schemars(deny_unknown_fields)]
-pub struct ModelProviderAwsAuthInfo {
-    /// AWS profile name to use. When unset, the AWS SDK default chain decides.
-    pub profile: Option<String>,
-    /// AWS region to use for provider-specific endpoints.
-    pub region: Option<String>,
+    pub store: bool,
 }
 
 impl ModelProviderInfo {
@@ -368,7 +347,7 @@ impl ModelProviderInfo {
             requires_openai_auth: true,
             supports_websockets: true,
             supports_models_endpoint: false,
-            disable_prompt_caching: false,
+            store: false,
         }
     }
 
@@ -397,7 +376,7 @@ impl ModelProviderInfo {
             requires_openai_auth: false,
             supports_websockets: false,
             supports_models_endpoint: false,
-            disable_prompt_caching: false,
+            store: false,
         }
     }
 
@@ -530,7 +509,7 @@ pub fn create_oss_provider_with_base_url(base_url: &str, wire_api: WireApi) -> M
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     }
 }
 

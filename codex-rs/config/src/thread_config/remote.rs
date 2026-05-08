@@ -185,7 +185,7 @@ fn model_provider_from_proto(
         requires_openai_auth: provider.requires_openai_auth,
         supports_websockets: provider.supports_websockets,
         supports_models_endpoint: provider.supports_models_endpoint,
-        disable_prompt_caching: provider.disable_prompt_caching,
+        store: provider.store,
     };
     Ok((id, info))
 }
@@ -214,7 +214,7 @@ fn model_provider_to_proto(
         requires_openai_auth,
         supports_websockets,
         supports_models_endpoint,
-        disable_prompt_caching,
+        store,
     } = provider;
 
     proto::ModelProvider {
@@ -236,7 +236,7 @@ fn model_provider_to_proto(
         requires_openai_auth,
         supports_websockets,
         supports_models_endpoint,
-        disable_prompt_caching,
+        store,
     }
 }
 
@@ -455,7 +455,7 @@ mod tests {
                             requires_openai_auth: false,
                             supports_websockets: true,
                             supports_models_endpoint: false,
-                            disable_prompt_caching: false,
+                            store: false,
                         }],
                         features: HashMap::from([
                             ("plugins".to_string(), false),
@@ -520,7 +520,7 @@ mod tests {
             requires_openai_auth: false,
             supports_websockets: true,
             supports_models_endpoint: false,
-            disable_prompt_caching: false,
+            store: false,
             aws: None,
         }
     }

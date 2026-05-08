@@ -862,7 +862,7 @@ async fn send_provider_auth_request(server: &MockServer, auth: ModelProviderAuth
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     };
 
     let codex_home = TempDir::new().unwrap();
@@ -1088,7 +1088,7 @@ async fn prefers_apikey_when_config_prefers_apikey_even_with_chatgpt_tokens() {
         base_url: Some(format!("{}/v1", server.uri())),
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
         ..built_in_model_providers(/* openai_base_url */ /*openai_base_url*/ None)["openai"].clone()
     };
 
@@ -2278,7 +2278,7 @@ async fn azure_responses_request_includes_store_and_reasoning_ids() {
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     };
 
     let codex_home = TempDir::new().unwrap();
@@ -2912,7 +2912,7 @@ async fn azure_overrides_assign_properties_used_for_responses_url() {
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     };
 
     // Init session
@@ -3002,7 +3002,7 @@ async fn env_var_overrides_loaded_auth() {
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     };
 
     // Init session

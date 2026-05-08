@@ -78,7 +78,7 @@ pub struct ModelProvider {
     #[prost(bool, tag = "18")]
     pub supports_models_endpoint: bool,
     #[prost(bool, tag = "19")]
-    pub disable_prompt_caching: bool,
+    pub store: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StringMap {

@@ -67,7 +67,7 @@ async fn retries_on_early_close() {
         requires_openai_auth: false,
         supports_websockets: false,
         supports_models_endpoint: false,
-        disable_prompt_caching: false,
+        store: false,
     };
 
     let TestCodex { codex, .. } = test_codex()
