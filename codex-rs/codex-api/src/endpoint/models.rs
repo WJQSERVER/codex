@@ -5,7 +5,6 @@ use crate::provider::Provider;
 use codex_client::HttpTransport;
 use codex_client::RequestTelemetry;
 use codex_protocol::config_types::ReasoningSummary;
-use codex_protocol::openai_models::default_input_modalities;
 use codex_protocol::openai_models::ConfigShellToolType;
 use codex_protocol::openai_models::ModelInfo;
 use codex_protocol::openai_models::ModelVisibility;
@@ -13,6 +12,7 @@ use codex_protocol::openai_models::ReasoningEffort;
 use codex_protocol::openai_models::ReasoningEffortPreset;
 use codex_protocol::openai_models::TruncationPolicyConfig;
 use codex_protocol::openai_models::WebSearchToolType;
+use codex_protocol::openai_models::default_input_modalities;
 use http::HeaderMap;
 use http::Method;
 use http::header::ETAG;
@@ -89,8 +89,8 @@ impl<T: HttpTransport> ModelsClient<T> {
 
         // OpenAI-compatible format: {"data": [{"id": "...", ...}, ...]}
         if let Some(data_val) = body.get("data") {
-            let entries: Vec<serde_json::Value> =
-                serde_json::from_value(data_val.clone()).map_err(|e| {
+            let entries: Vec<serde_json::Value> = serde_json::from_value(data_val.clone())
+                .map_err(|e| {
                     ApiError::Stream(format!(
                         "failed to decode models response data: {e}; body: {}",
                         String::from_utf8_lossy(&resp.body)

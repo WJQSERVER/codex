@@ -452,6 +452,7 @@ mod tests {
                             requires_openai_auth: false,
                             supports_websockets: true,
                             supports_models_endpoint: false,
+                            disable_prompt_caching: false,
                         }],
                         features: HashMap::from([
                             ("plugins".to_string(), false),
@@ -516,6 +517,7 @@ mod tests {
             requires_openai_auth: false,
             supports_websockets: true,
             supports_models_endpoint: false,
+            disable_prompt_caching: false,
             aws: None,
         }
     }
