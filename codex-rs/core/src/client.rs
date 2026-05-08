@@ -720,7 +720,7 @@ impl ModelClient {
             parallel_tool_calls: prompt.parallel_tool_calls,
             reasoning,
             store: provider.is_azure_responses_endpoint()
-                || self.client.state.provider.info().supports_prompt_caching(),
+                || self.state.provider.info().supports_prompt_caching(),
             stream: true,
             include,
             service_tier,
