@@ -1,0 +1,261 @@
+name: npm-offline
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to stamp (e.g. 0.0.0-fork.1)"
+        required: false
+        default: "0.0.0-fork.1"
+
+env:
+  TARGET: x86_64-unknown-linux-musl
+  RG_VERSION: "15.1.0"
+
+jobs:
+  build:
+    name: Build Linux x64 (musl)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: codex-rs
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install bwrap build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libcap-dev
+
+      - name: Install UBSan runtime (musl)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libubsan1
+          fi
+
+      - uses: dtolnay/rust-toolchain@a0b273b48ed29de4470960879e8381ff45632f26 # 1.93.0
+        with:
+          targets: ${{ env.TARGET }}
+
+      - name: Use hermetic Cargo home (musl)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo_home="${GITHUB_WORKSPACE}/.cargo-home"
+          mkdir -p "${cargo_home}/bin"
+          echo "CARGO_HOME=${cargo_home}" >> "$GITHUB_ENV"
+          echo "${cargo_home}/bin" >> "$GITHUB_PATH"
+          : > "${cargo_home}/config.toml"
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.14.0
+
+      - name: Install musl build tools
+        env:
+          TARGET: ${{ env.TARGET }}
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/install-musl-build-tools.sh"
+
+      - name: Configure rustc UBSan wrapper (musl host)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ubsan=""
+          if command -v ldconfig >/dev/null 2>&1; then
+            ubsan="$(ldconfig -p | grep -m1 'libubsan\.so\.1' | sed -E 's/.*=> (.*)$/\1/')"
+          fi
+          wrapper_root="${RUNNER_TEMP:-/tmp}"
+          wrapper="${wrapper_root}/rustc-ubsan-wrapper"
+          cat > "${wrapper}" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [[ -n "${ubsan}" ]]; then
+            export LD_PRELOAD="${ubsan}\${LD_PRELOAD:+:\${LD_PRELOAD}}"
+          fi
+          exec "\$1" "\${@:2}"
+          EOF
+          chmod +x "${wrapper}"
+          echo "RUSTC_WRAPPER=${wrapper}" >> "$GITHUB_ENV"
+          echo "RUSTC_WORKSPACE_WRAPPER=" >> "$GITHUB_ENV"
+
+      - name: Clear sanitizer flags (musl)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "AWS_LC_SYS_NO_JITTER_ENTROPY=1" >> "$GITHUB_ENV"
+          target_no_jitter="AWS_LC_SYS_NO_JITTER_ENTROPY_${{ env.TARGET }}"
+          target_no_jitter="${target_no_jitter//-/_}"
+          echo "${target_no_jitter}=1" >> "$GITHUB_ENV"
+
+          echo "RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_ENCODED_RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "RUSTDOCFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_BUILD_RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS=" >> "$GITHUB_ENV"
+
+          sanitize_flags() {
+            local input="$1"
+            input="${input//-fsanitize=undefined/}"
+            input="${input//-fno-sanitize-recover=undefined/}"
+            input="${input//-fno-sanitize-trap=undefined/}"
+            echo "$input"
+          }
+
+          cflags="$(sanitize_flags "${CFLAGS-}")"
+          cxxflags="$(sanitize_flags "${CXXFLAGS-}")"
+          echo "CFLAGS=${cflags}" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=${cxxflags}" >> "$GITHUB_ENV"
+
+      - name: Configure musl rusty_v8 artifact overrides and verify checksums
+        uses: ./.github/actions/setup-rusty-v8-musl
+        with:
+          target: ${{ env.TARGET }}
+
+      - name: Build bwrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --target "$TARGET" --release --locked --bin bwrap
+
+          bwrap_path="target/${TARGET}/release/bwrap"
+          if [[ ! -f "$bwrap_path" ]]; then
+            echo "bwrap binary ${bwrap_path} not found"
+            exit 1
+          fi
+          echo "Built bwrap at ${bwrap_path}"
+
+      - name: Build codex
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --target "$TARGET" --release --locked --bin codex
+
+          codex_path="target/${TARGET}/release/codex"
+          if [[ ! -f "$codex_path" ]]; then
+            echo "codex binary ${codex_path} not found"
+            exit 1
+          fi
+          echo "Built codex at ${codex_path}"
+
+      - name: Download ripgrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          rg_tarball="ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          rg_url="https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/${rg_tarball}"
+
+          echo "Downloading ripgrep ${RG_VERSION} from ${rg_url}"
+          curl -fsSL "${rg_url}" -o "/tmp/${rg_tarball}"
+          tar -xzf "/tmp/${rg_tarball}" -C /tmp
+          rg_binary="/tmp/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl/rg"
+
+          if [[ ! -f "$rg_binary" ]]; then
+            echo "rg binary not found at ${rg_binary}"
+            exit 1
+          fi
+          echo "Downloaded rg: $("$rg_binary" --version)"
+
+      - name: Create vendor directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          vendor_root="${GITHUB_WORKSPACE}/vendor"
+          target_dir="${vendor_root}/${TARGET}"
+
+          mkdir -p "${target_dir}/codex"
+          mkdir -p "${target_dir}/codex-resources"
+          mkdir -p "${target_dir}/path"
+
+          cp "target/${TARGET}/release/codex" "${target_dir}/codex/codex"
+          cp "target/${TARGET}/release/bwrap" "${target_dir}/codex-resources/bwrap"
+          cp "/tmp/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl/rg" "${target_dir}/path/rg"
+
+          chmod 0755 "${target_dir}/codex/codex"
+          chmod 0755 "${target_dir}/codex-resources/bwrap"
+          chmod 0755 "${target_dir}/path/rg"
+
+          echo "Vendor directory contents:"
+          find "${vendor_root}" -type f | sort
+
+      - name: Upload vendor artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: vendor-linux-x64
+          path: vendor/
+
+  stage-npm:
+    name: Stage npm packages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+
+      - name: Download vendor artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: vendor-linux-x64
+          path: .
+
+      - name: Stamp version
+        id: version
+        run: |
+          version="${{ github.event.inputs.version }}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Stamping version: ${version}"
+
+      - name: Stage codex-linux-x64 platform package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          vendor_abs="$(pwd)/vendor"
+
+          python3 codex-cli/scripts/build_npm_package.py \
+            --package codex-linux-x64 \
+            --release-version "${version}" \
+            --vendor-src "${vendor_abs}" \
+            --pack-output "dist/codex-npm-linux-x64-${version}.tgz"
+
+      - name: Stage codex wrapper package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+
+          python3 codex-cli/scripts/build_npm_package.py \
+            --package codex \
+            --release-version "${version}" \
+            --pack-output "dist/codex-npm-${version}.tgz"
+
+      - name: List output tarballs
+        run: |
+          echo "=== npm tarballs ==="
+          ls -lh dist/*.tgz
+
+      - name: Upload npm tarballs
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: npm-offline-packages
+          path: dist/*.tgz
+          retention-days: 90
