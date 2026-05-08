@@ -142,6 +142,16 @@ pub struct ModelProviderInfo {
     pub store: bool,
 }
 
+/// AWS SigV4 auth configuration for a model provider.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct ModelProviderAwsAuthInfo {
+    /// AWS profile name to use. When unset, the AWS SDK default chain decides.
+    pub profile: Option<String>,
+    /// AWS region to use for provider-specific endpoints.
+    pub region: Option<String>,
+}
+
 impl ModelProviderInfo {
     pub fn validate(&self) -> std::result::Result<(), String> {
         if self.aws.is_some() {
