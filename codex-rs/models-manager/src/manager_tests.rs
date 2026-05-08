@@ -74,6 +74,7 @@ fn assert_models_contain(actual: &[ModelInfo], expected: &[ModelInfo]) {
 struct TestModelsEndpoint {
     has_command_auth: bool,
     uses_codex_backend: bool,
+    supports_remote_models_endpoint: bool,
     responses: Mutex<VecDeque<Vec<ModelInfo>>>,
     fetch_count: AtomicUsize,
 }
@@ -83,6 +84,7 @@ impl TestModelsEndpoint {
         Arc::new(Self {
             has_command_auth: false,
             uses_codex_backend: true,
+            supports_remote_models_endpoint: false,
             responses: Mutex::new(responses.into()),
             fetch_count: AtomicUsize::new(0),
         })
@@ -92,6 +94,7 @@ impl TestModelsEndpoint {
         Arc::new(Self {
             has_command_auth: false,
             uses_codex_backend: false,
+            supports_remote_models_endpoint: false,
             responses: Mutex::new(responses.into()),
             fetch_count: AtomicUsize::new(0),
         })
@@ -148,6 +151,10 @@ impl ExternalAuth for TestUnresolvedExternalApiKeyAuth {
 impl ModelsEndpointClient for TestModelsEndpoint {
     fn has_command_auth(&self) -> bool {
         self.has_command_auth
+    }
+
+    fn supports_remote_models_endpoint(&self) -> bool {
+        self.supports_remote_models_endpoint
     }
 
     async fn uses_codex_backend(&self) -> bool {
@@ -562,6 +569,10 @@ impl TestAuthAwareModelsEndpoint {
 #[async_trait]
 impl ModelsEndpointClient for TestAuthAwareModelsEndpoint {
     fn has_command_auth(&self) -> bool {
+        false
+    }
+
+    fn supports_remote_models_endpoint(&self) -> bool {
         false
     }
 

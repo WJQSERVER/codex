@@ -6913,6 +6913,7 @@ model_verbosity = "high"
         websocket_connect_timeout_ms: Some(15_000),
         requires_openai_auth: false,
         supports_websockets: false,
+        supports_models_endpoint: false,
     };
     let model_provider_map = {
         let mut model_provider_map =
