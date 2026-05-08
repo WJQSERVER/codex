@@ -6,7 +6,12 @@ use codex_utils_cli::CliConfigOverrides;
 use codex_utils_cli::SharedCliOptions;
 
 #[derive(Parser, Debug)]
-#[command(version)]
+#[command(version = concat!(
+    clap::crate_version!(),
+    " (",
+    option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
+    ")"
+))]
 pub struct Cli {
     /// Optional user prompt to start the session.
     #[arg(value_name = "PROMPT", value_hint = clap::ValueHint::Other)]

@@ -73,7 +73,12 @@ use codex_terminal_detection::TerminalName;
 #[derive(Debug, Parser)]
 #[clap(
     author,
-    version,
+    version = concat!(
+        clap::crate_version!(),
+        " (",
+        option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
+        ")"
+    ),
     // If a sub‑command is given, ignore requirements of the default args.
     subcommand_negates_reqs = true,
     // The executable is sometimes invoked via a platform‑specific name like
