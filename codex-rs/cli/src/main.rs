@@ -74,7 +74,7 @@ use codex_terminal_detection::TerminalName;
 #[clap(
     author,
     version = concat!(
-        clap::crate_version!(),
+        env!("CARGO_PKG_VERSION"),
         " (",
         option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
         ")"

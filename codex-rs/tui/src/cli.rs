@@ -7,7 +7,7 @@ use codex_utils_cli::SharedCliOptions;
 
 #[derive(Parser, Debug)]
 #[command(version = concat!(
-    clap::crate_version!(),
+    env!("CARGO_PKG_VERSION"),
     " (",
     option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
     ")"
