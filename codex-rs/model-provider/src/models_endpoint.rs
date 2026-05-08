@@ -71,6 +71,10 @@ impl ModelsEndpointClient for OpenAiModelsEndpoint {
         self.provider_info.has_command_auth()
     }
 
+    fn supports_remote_models_endpoint(&self) -> bool {
+        self.provider_info.supports_models_endpoint
+    }
+
     async fn uses_codex_backend(&self) -> bool {
         self.auth()
             .await
