@@ -367,7 +367,7 @@ impl ModelProviderInfo {
             websocket_connect_timeout_ms: None,
             requires_openai_auth: true,
             supports_websockets: true,
-            supports_models_endpoint: true,
+            supports_models_endpoint: false,
             disable_prompt_caching: false,
         }
     }
