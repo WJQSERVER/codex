@@ -2,7 +2,7 @@
 // Unified entry point for the Codex CLI.
 
 import { spawn } from "node:child_process";
-import { existsSync } from "fs";
+import { existsSync, chmodSync } from "fs";
 import { createRequire } from "node:module";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -116,6 +116,17 @@ if (!vendorRoot) {
 
 const archRoot = path.join(vendorRoot, targetTriple);
 const binaryPath = path.join(archRoot, "codex", codexBinaryName);
+
+// npm pack strips Unix execute permissions. Fix at runtime so the binary
+// can be spawned without requiring a postinstall step (which bun blocks
+// by default for untrusted packages).
+if (process.platform !== "win32" && existsSync(binaryPath)) {
+  try {
+    chmodSync(binaryPath, 0o755);
+  } catch {
+    // ignore — best-effort; if the binary is already executable this is a no-op
+  }
+}
 
 // Use an asynchronous spawn instead of spawnSync so that Node is able to
 // respond to signals (e.g. Ctrl-C / SIGINT) while the native binary is
