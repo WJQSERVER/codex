@@ -67,6 +67,14 @@ jobs:
           restore-keys: |
             cargo-registry-${{ runner.os }}-${{ env.TARGET }}-
 
+      - name: Cache Cargo build output
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ${{ github.workspace }}/codex-rs/target
+          key: cargo-target-${{ runner.os }}-${{ env.TARGET }}-release-${{ hashFiles('codex-rs/Cargo.lock') }}
+          restore-keys: |
+            cargo-target-${{ runner.os }}-${{ env.TARGET }}-release-
+
       - name: Cache rusty_v8 artifacts
         id: rusty_v8_cache
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
