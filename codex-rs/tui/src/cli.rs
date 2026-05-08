@@ -9,7 +9,7 @@ use codex_utils_cli::SharedCliOptions;
 #[command(version = concat!(
     env!("CARGO_PKG_VERSION"),
     " (",
-    option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
+    env!("CODEX_BUILD_HASH"),
     ")"
 ))]
 pub struct Cli {

@@ -76,7 +76,7 @@ use codex_terminal_detection::TerminalName;
     version = concat!(
         env!("CARGO_PKG_VERSION"),
         " (",
-        option_env!("CODEX_BUILD_HASH").unwrap_or("dev"),
+        env!("CODEX_BUILD_HASH"),
         ")"
     ),
     // If a sub‑command is given, ignore requirements of the default args.
