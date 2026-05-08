@@ -129,6 +129,14 @@ fn default_reasoning_presets() -> Vec<ReasoningEffortPreset> {
             effort: ReasoningEffort::High,
             description: "Greater reasoning depth for complex problems".into(),
         },
+        ReasoningEffortPreset {
+            effort: ReasoningEffort::XHigh,
+            description: "Extra high reasoning depth for complex problems".into(),
+        },
+        ReasoningEffortPreset {
+            effort: ReasoningEffort::Max,
+            description: "Maximum reasoning depth for complex problems".into(),
+        },
     ]
 }
 

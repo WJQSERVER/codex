@@ -1624,6 +1624,7 @@ impl SessionHeaderHistoryCell {
             ReasoningEffortConfig::Medium => "medium",
             ReasoningEffortConfig::High => "high",
             ReasoningEffortConfig::XHigh => "xhigh",
+            ReasoningEffortConfig::Max => "max",
             ReasoningEffortConfig::None => "none",
         })
     }
