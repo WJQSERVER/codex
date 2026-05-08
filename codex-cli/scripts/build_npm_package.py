@@ -326,11 +326,6 @@ def stage_sources(staging_dir: Path, version: str, package: str) -> None:
 
     if package == "codex":
         package_json["files"] = ["bin"]
-        package_json["optionalDependencies"] = {
-            CODEX_PLATFORM_PACKAGES[platform_package]["npm_name"]: version
-            for platform_package in PACKAGE_EXPANSIONS["codex"]
-            if platform_package != "codex"
-        }
 
     elif package == "codex-sdk":
         scripts = package_json.get("scripts")
