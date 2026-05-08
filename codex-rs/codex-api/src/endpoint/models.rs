@@ -4,8 +4,15 @@ use crate::error::ApiError;
 use crate::provider::Provider;
 use codex_client::HttpTransport;
 use codex_client::RequestTelemetry;
+use codex_protocol::config_types::ReasoningEffort;
+use codex_protocol::config_types::ReasoningSummary;
+use codex_protocol::openai_models::default_input_modalities;
+use codex_protocol::openai_models::ConfigShellToolType;
 use codex_protocol::openai_models::ModelInfo;
-use codex_protocol::openai_models::ModelsResponse;
+use codex_protocol::openai_models::ModelVisibility;
+use codex_protocol::openai_models::ReasoningEffortPreset;
+use codex_protocol::openai_models::TruncationPolicyConfig;
+use codex_protocol::openai_models::WebSearchToolType;
 use http::HeaderMap;
 use http::Method;
 use http::header::ETAG;
@@ -61,15 +68,104 @@ impl<T: HttpTransport> ModelsClient<T> {
             .and_then(|value| value.to_str().ok())
             .map(ToString::to_string);
 
-        let ModelsResponse { models } = serde_json::from_slice::<ModelsResponse>(&resp.body)
-            .map_err(|e| {
-                ApiError::Stream(format!(
-                    "failed to decode models response: {e}; body: {}",
-                    String::from_utf8_lossy(&resp.body)
-                ))
-            })?;
+        let body: serde_json::Value = serde_json::from_slice(&resp.body).map_err(|e| {
+            ApiError::Stream(format!(
+                "failed to parse models response as JSON: {e}; body: {}",
+                String::from_utf8_lossy(&resp.body)
+            ))
+        })?;
 
-        Ok((models, header_etag))
+        // Native Codex format: {"models": [ModelInfo, ...]}
+        if let Some(models_val) = body.get("models") {
+            let models: Vec<ModelInfo> =
+                serde_json::from_value(models_val.clone()).map_err(|e| {
+                    ApiError::Stream(format!(
+                        "failed to decode models response: {e}; body: {}",
+                        String::from_utf8_lossy(&resp.body)
+                    ))
+                })?;
+            return Ok((models, header_etag));
+        }
+
+        // OpenAI-compatible format: {"data": [{"id": "...", ...}, ...]}
+        if let Some(data_val) = body.get("data") {
+            let entries: Vec<serde_json::Value> =
+                serde_json::from_value(data_val.clone()).map_err(|e| {
+                    ApiError::Stream(format!(
+                        "failed to decode models response data: {e}; body: {}",
+                        String::from_utf8_lossy(&resp.body)
+                    ))
+                })?;
+
+            let models: Vec<ModelInfo> = entries
+                .into_iter()
+                .filter_map(|entry| {
+                    let model_id = entry.get("id")?.as_str()?.to_string();
+                    Some(openai_model_entry_to_model_info(model_id))
+                })
+                .collect();
+
+            return Ok((models, header_etag));
+        }
+
+        Err(ApiError::Stream(format!(
+            "models response missing both 'models' and 'data' fields; body: {}",
+            String::from_utf8_lossy(&resp.body)
+        )))
+    }
+}
+
+fn default_reasoning_presets() -> Vec<ReasoningEffortPreset> {
+    vec![
+        ReasoningEffortPreset {
+            effort: ReasoningEffort::Low,
+            description: "Fast responses with lighter reasoning".into(),
+        },
+        ReasoningEffortPreset {
+            effort: ReasoningEffort::Medium,
+            description: "Balances speed and reasoning depth for everyday tasks".into(),
+        },
+        ReasoningEffortPreset {
+            effort: ReasoningEffort::High,
+            description: "Greater reasoning depth for complex problems".into(),
+        },
+    ]
+}
+
+fn openai_model_entry_to_model_info(model_id: String) -> ModelInfo {
+    ModelInfo {
+        slug: model_id.clone(),
+        display_name: model_id,
+        description: None,
+        default_reasoning_level: None,
+        supported_reasoning_levels: default_reasoning_presets(),
+        shell_type: ConfigShellToolType::ShellCommand,
+        visibility: ModelVisibility::List,
+        supported_in_api: true,
+        priority: 50,
+        additional_speed_tiers: Vec::new(),
+        service_tiers: Vec::new(),
+        availability_nux: None,
+        upgrade: None,
+        base_instructions: String::new(),
+        model_messages: None,
+        supports_reasoning_summaries: false,
+        default_reasoning_summary: ReasoningSummary::Auto,
+        support_verbosity: false,
+        default_verbosity: None,
+        apply_patch_tool_type: None,
+        web_search_tool_type: WebSearchToolType::Text,
+        truncation_policy: TruncationPolicyConfig::bytes(10_000),
+        supports_parallel_tool_calls: false,
+        supports_image_detail_original: false,
+        context_window: Some(272_000),
+        max_context_window: None,
+        auto_compact_token_limit: None,
+        effective_context_window_percent: 95,
+        experimental_supported_tools: Vec::new(),
+        input_modalities: default_input_modalities(),
+        used_fallback_model_metadata: true,
+        supports_search_tool: false,
     }
 }
 
@@ -83,6 +179,7 @@ mod tests {
     use codex_client::Response;
     use codex_client::StreamResponse;
     use codex_client::TransportError;
+    use codex_protocol::openai_models::ModelsResponse;
     use http::HeaderMap;
     use http::StatusCode;
     use pretty_assertions::assert_eq;
