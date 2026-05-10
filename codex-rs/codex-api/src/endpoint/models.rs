@@ -144,7 +144,7 @@ fn default_reasoning_presets() -> Vec<ReasoningEffortPreset> {
 fn openai_model_entry_to_model_info(model_id: String) -> ModelInfo {
     ModelInfo {
         slug: model_id.clone(),
-        display_name: model_id,
+        display_name: model_id.clone(),
         description: None,
         default_reasoning_level: None,
         supported_reasoning_levels: default_reasoning_presets(),
@@ -162,7 +162,7 @@ fn openai_model_entry_to_model_info(model_id: String) -> ModelInfo {
         default_reasoning_summary: ReasoningSummary::Auto,
         support_verbosity: false,
         default_verbosity: None,
-        apply_patch_tool_type: Some(if slug.starts_with("gpt") {
+        apply_patch_tool_type: Some(if model_id.starts_with("gpt") {
             ApplyPatchToolType::Freeform
         } else {
             ApplyPatchToolType::Function
