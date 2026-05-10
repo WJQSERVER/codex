@@ -162,7 +162,7 @@ fn openai_model_entry_to_model_info(model_id: String) -> ModelInfo {
         default_reasoning_summary: ReasoningSummary::Auto,
         support_verbosity: false,
         default_verbosity: None,
-        apply_patch_tool_type: Some(if model_id.starts_with("gpt") {
+        apply_patch_tool_type: Some(if slug.starts_with("gpt") {
             ApplyPatchToolType::Freeform
         } else {
             ApplyPatchToolType::Function
