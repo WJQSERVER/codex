@@ -157,6 +157,12 @@ jobs:
         with:
           target: ${{ env.TARGET }}
 
+      - name: Sync Cargo.lock with workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo update --workspace
+
       - name: Build bwrap
         shell: bash
         run: |
